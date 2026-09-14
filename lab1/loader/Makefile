@@ -22,7 +22,6 @@ tpcc_load$(SUFFIX) : load.o support.o
 load: tpcc_load$(SUFFIX)
 	rm -f $(DB_NAME) $(DB_NAME)-wal $(DB_NAME)-shm $(DB_NAME)-journal \
 		&& sqlite3 $(DB_NAME) < create_table_sqlite.sql \
-		&& sqlite3 $(DB_NAME) < add_fkey_idx_sqlite.sql \
 		&& ./tpcc_load$(SUFFIX) -w $(or $(WAREHOUSES),1)
 
 clean :

@@ -10,7 +10,8 @@ w_state text,
 w_zip text,
 w_tax real,
 w_ytd real,
-primary key (w_id));
+primary key (w_id)
+);
 
 drop table if exists district;
 
@@ -26,7 +27,9 @@ d_zip text,
 d_tax real,
 d_ytd real,
 d_next_o_id integer,
-primary key (d_w_id, d_id));
+primary key (d_w_id, d_id),
+constraint fkey_warehouse foreign key (d_w_id) references warehouse(w_id)
+);
 
 drop table if exists customer;
 
@@ -52,7 +55,9 @@ c_ytd_payment real,
 c_payment_cnt integer,
 c_delivery_cnt integer,
 c_data text,
-primary key(c_w_id, c_d_id, c_id));
+primary key(c_w_id, c_d_id, c_id)
+constraint fkey_district foreign key (c_w_id,c_d_id) references district(d_w_id,d_id)
+);
 
 drop table if exists history;
 
@@ -64,15 +69,10 @@ h_d_id integer,
 h_w_id integer,
 h_date text,
 h_amount real,
-h_data text);
-
-drop table if exists new_orders;
-
-create table new_orders (
-no_o_id integer not null,
-no_d_id integer not null,
-no_w_id integer not null,
-primary key(no_w_id, no_d_id, no_o_id));
+h_data text,
+constraint fkey_customer foreign key (h_c_w_id, h_c_d_id, h_c_id) references customer(c_w_id, c_d_id, c_id),
+constraint fkey_district foreign key (h_c_w_id, h_c_d_id) references district(d_w_id, d_id)
+);
 
 drop table if exists orders;
 
@@ -85,22 +85,18 @@ o_entry_d text,
 o_carrier_id integer,
 o_ol_cnt integer,
 o_all_local integer,
-primary key(o_w_id, o_d_id, o_id));
+primary key(o_w_id, o_d_id, o_id),
+constraint fkey_customer foreign key (o_w_id, o_d_id, o_c_id) references customer(c_w_id, c_d_id, c_id)
+);
 
-drop table if exists order_line;
+drop table if exists new_orders;
 
-create table order_line (
-ol_o_id integer not null,
-ol_d_id integer not null,
-ol_w_id integer not null,
-ol_number integer not null,
-ol_i_id integer,
-ol_supply_w_id integer,
-ol_delivery_d text,
-ol_quantity integer,
-ol_amount real,
-ol_dist_info text,
-primary key(ol_w_id, ol_d_id, ol_o_id, ol_number));
+create table new_orders (
+no_o_id integer not null,
+no_d_id integer not null,
+no_w_id integer not null,
+primary key(no_w_id, no_d_id, no_o_id),
+constraint fkey_orders foreign key (no_w_id, no_d_id, no_o_id) references orders(o_w_id, o_d_id, o_id));
 
 drop table if exists item;
 
@@ -111,6 +107,7 @@ i_name text,
 i_price real,
 i_data text,
 primary key(i_id));
+
 
 drop table if exists stock;
 
@@ -132,4 +129,25 @@ s_ytd real,
 s_order_cnt integer,
 s_remote_cnt integer,
 s_data text,
-primary key(s_w_id, s_i_id));
+primary key(s_w_id, s_i_id),
+constraint fkey_warehouse foreign key (s_w_id) references warehouse(w_id),
+constraint fkey_item foreign key (s_i_id) references item(i_id)
+);
+
+drop table if exists order_line;
+
+create table order_line (
+ol_o_id integer not null,
+ol_d_id integer not null,
+ol_w_id integer not null,
+ol_number integer not null,
+ol_i_id integer,
+ol_supply_w_id integer,
+ol_delivery_d text,
+ol_quantity integer,
+ol_amount real,
+ol_dist_info text,
+primary key(ol_w_id, ol_d_id, ol_o_id, ol_number),
+constraint fkey_orders foreign key(ol_w_id, ol_d_id, ol_o_id) references orders(o_w_id, o_d_id, o_id),
+constraint fkey_stock foreign key(ol_supply_w_id, ol_i_id) references stock(s_w_id, s_i_id)
+);
