@@ -119,12 +119,13 @@ static struct juso *read_all_jusos(FILE *file, size_t *count_ret) {
       }
       if (rest[0] == '"') {
         fields[i] = rest + 1;
-        char *end_field = strchr(rest, '"');
+        char *end_field = strchr(rest + 1, '"');
         if (!end_field) {
           printf("ERROR: no trailing '\"\n");
           goto fail;
         }
         *end_field = '\0';
+        rest = end_field + 1;
         char *comma = strchr(rest, ',');
         if (comma) {
           rest = comma + 1;
