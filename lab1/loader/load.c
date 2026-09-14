@@ -952,7 +952,7 @@ retry:
 	for (o_id = 1; o_id <= ORD_PER_DIST; o_id++) {
 
 		/* Generate Order Data */
-		o_c_id = GetPermutation();
+		o_c_id = RandomNumber(1,CUST_PER_DIST);
 		o_carrier_id = RandomNumber(1L, 10L);
 		o_ol_cnt = RandomNumber(5L, 15L);
 
