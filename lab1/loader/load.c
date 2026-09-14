@@ -65,6 +65,15 @@ try_stmt_execute(sqlite3_stmt *sqlite_stmt)
     return ret;
 }
 
+static  int sqlite3_bind_text_null_empty(sqlite3_stmt* a1, int a2,const char* a3, int a4,void(*a5)(void*)){
+
+	if(a3[0] == 0){
+		return sqlite3_bind_null(a1,a2);
+	}
+	return sqlite3_bind_text(a1,a2,a3,a4,a5);
+
+}
+
 /*
  * ==================================================================+ |
  * main() | ARGUMENTS |      Warehouses n [Debug] [Help]
@@ -387,10 +396,10 @@ LoadWare()
 
 	int             w_id;
         char            w_name[11];
-        char            w_street_1[21];
-        char            w_street_2[21];
-        char            w_city[21];
-        char            w_state[21];
+        char            w_street_1[128];
+        char            w_street_2[128];
+        char            w_city[128];
+        char            w_state[128];
         char            w_zip[10];
 	float           w_tax;
 	float           w_ytd;
@@ -434,9 +443,9 @@ LoadWare()
 
 		sqlite3_bind_int64(sqlite_stmt, 1, w_id);
 		sqlite3_bind_text(sqlite_stmt, 2, w_name, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 3, w_street_1, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 4, w_street_2, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 5, w_city, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 3, w_street_1, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 4, w_street_2, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 5, w_city, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 6, w_state, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 7, w_zip, -1, SQLITE_STATIC);
 		sqlite3_bind_double(sqlite_stmt, 8, w_tax);
@@ -477,9 +486,12 @@ LoadCust()
 
 	if( sqlite3_exec(sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL) != SQLITE_OK) goto sqlerr;
 
-	for (w_id = min_ware; w_id <= max_ware; w_id++)
-		for (d_id = 1L; d_id <= DIST_PER_WARE; d_id++)
+	for (w_id = min_ware; w_id <= max_ware; w_id++){
+		int state_id = w_id % num_states;
+		int dist_per_ware = states[state_id].num_cities;
+		for (d_id = 1L; d_id <= dist_per_ware; d_id++)
 			Customer(d_id, w_id);
+	}
 
 	/* EXEC SQL COMMIT WORK;*/	/* Just in case */
 	if( sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, NULL) != SQLITE_OK) goto sqlerr;
@@ -507,10 +519,12 @@ LoadOrd()
 	/* EXEC SQL WHENEVER SQLERROR GOTO sqlerr;*/
 	if( sqlite3_exec(sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL) != SQLITE_OK) goto sqlerr;
 
-	for (w_id = min_ware; w_id <= max_ware; w_id++)
-		for (d_id = 1L; d_id <= DIST_PER_WARE; d_id++)
+	for (w_id = min_ware; w_id <= max_ware; w_id++){
+		int state_id = w_id % num_states;
+		int dist_per_ware = states[state_id].num_cities;
+		for (d_id = 1L; d_id <= dist_per_ware; d_id++)
 			Orders(d_id, w_id);
-
+}
 	/* EXEC SQL COMMIT WORK; */	/* Just in case */
 	if( sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, NULL) != SQLITE_OK) goto sqlerr;
 
@@ -660,10 +674,10 @@ District(w_id)
 	int             d_w_id;
 
 	char            d_name[11];
-	char            d_street_1[21];
-	char            d_street_2[21];
-	char            d_city[21];
-	char            d_state[21];
+	char            d_street_1[128];
+	char            d_street_2[128];
+	char            d_city[128];
+	char            d_state[128];
 	char            d_zip[10];
 
 	float           d_tax;
@@ -679,7 +693,9 @@ District(w_id)
 	d_ytd = 30000.0;
 	d_next_o_id = 3001L;
 retry:
-	for (d_id = 1; d_id <= DIST_PER_WARE; d_id++) {
+	int state_id = w_id % num_states;
+	int dist_per_ware = states[state_id].num_cities;
+	for (d_id = 1; d_id <= dist_per_ware; d_id++) {
 
 		/* Generate District Data */
 
@@ -699,9 +715,9 @@ retry:
 		sqlite3_bind_int64(sqlite_stmt, 1, d_id);
 		sqlite3_bind_int64(sqlite_stmt, 2, d_w_id);
 		sqlite3_bind_text(sqlite_stmt, 3, d_name, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 4, d_street_1, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 5, d_street_2, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 6, d_city, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 4, d_street_1, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 5, d_street_2, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 6, d_city, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 7, d_state, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 8, d_zip, -1, SQLITE_STATIC);
 		sqlite3_bind_double(sqlite_stmt, 9, d_tax);
@@ -744,10 +760,10 @@ Customer(d_id, w_id)
 	char            c_first[17];
 	char            c_middle[3];
 	char            c_last[17];
-	char            c_street_1[21];
-	char            c_street_2[21];
-	char            c_city[21];
-	char            c_state[21];
+	char            c_street_1[128];
+	char            c_street_2[128];
+	char            c_city[128];
+	char            c_state[128];
 	char            c_zip[10];
 	char            c_phone[17];
 	char            c_since[12];
@@ -828,9 +844,9 @@ retry:
 		sqlite3_bind_text(sqlite_stmt, 4, c_first, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 5, c_middle, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 6, c_last, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 7, c_street_1, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 8, c_street_2, -1, SQLITE_STATIC);
-		sqlite3_bind_text(sqlite_stmt, 9, c_city, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 7, c_street_1, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 8, c_street_2, -1, SQLITE_STATIC);
+		sqlite3_bind_text_null_empty(sqlite_stmt, 9, c_city, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 10, c_state, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 11, c_zip, -1, SQLITE_STATIC);
 		sqlite3_bind_text(sqlite_stmt, 12, c_phone, -1, SQLITE_STATIC);
@@ -1102,10 +1118,10 @@ MakeAddress(w_id, d_id, str1, str2, city, state, zip)
 	char           *zip;
 {
 
-        // char            w_street_1[21];
-        // char            w_street_2[21];
-        // char            w_city[21];
-        // char            w_state[21];
+        // char            w_street_1[128];
+        // char            w_street_2[128];
+        // char            w_city[128];
+        // char            w_state[128];
         // char            w_zip[10];
 
 	int state_id = w_id % num_states;
@@ -1119,10 +1135,10 @@ MakeAddress(w_id, d_id, str1, str2, city, state, zip)
 	int idx = RandomNumber(0, states[state_id].cities[city_id].num_jusos - 1);
 	struct juso* entry = &states[state_id].cities[city_id].jusos[idx];
 
-	snprintf(str1, 21, "%s", entry->street1);
-	snprintf(str2, 21, "%s", entry->street2);
-	snprintf(city, 21, "%s", entry->city);
-	snprintf(state, 21, "%s", entry->state);
+	snprintf(str1, 128, "%s", entry->street1);
+	snprintf(str2, 128, "%s", entry->street2);
+	snprintf(city, 128, "%s", entry->city);
+	snprintf(state, 128, "%s", entry->state);
 	snprintf(zip, 10, "%s", entry->zip);
 }
 
