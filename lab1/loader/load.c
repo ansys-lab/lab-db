@@ -415,7 +415,7 @@ LoadWare()
 
                 w_name[ MakeAlphaString(6, 10, w_name) ] = 0;
 
-		MakeAddress(w_id, w_street_1, w_street_2, w_city, w_state, w_zip);
+		MakeAddress(w_id, -1, w_street_1, w_street_2, w_city, w_state, w_zip);
 
 		w_tax = ((float) RandomNumber(10L, 20L)) / 100.0;
 		w_ytd = 300000.00;
@@ -684,7 +684,7 @@ retry:
 		/* Generate District Data */
 
 		d_name[ MakeAlphaString(6L, 10L, d_name) ] = 0;
-		MakeAddress(w_id, d_street_1, d_street_2, d_city, d_state, d_zip);
+		MakeAddress(w_id, d_id, d_street_1, d_street_2, d_city, d_state, d_zip);
 
 		d_tax = ((float) RandomNumber(10L, 20L)) / 100.0;
 
@@ -792,7 +792,7 @@ retry:
 			Lastname(NURand(255, 0, 999), c_last);
 		}
 
-		MakeAddress(w_id, c_street_1, c_street_2, c_city, c_state, c_zip);
+		MakeAddress(w_id, d_id, c_street_1, c_street_2, c_city, c_state, c_zip);
 		c_phone[ MakeNumberString(16, 16, c_phone) ] = 0;
 
 		if (RandomNumber(0L, 1L))
@@ -1092,8 +1092,9 @@ sqlerr:
  * +==================================================================
  */
 void 
-MakeAddress(w_id, str1, str2, city, state, zip)
+MakeAddress(w_id, d_id, str1, str2, city, state, zip)
 	int w_id;
+	int d_id;
 	char           *str1;
 	char           *str2;
 	char           *city;
@@ -1107,10 +1108,16 @@ MakeAddress(w_id, str1, str2, city, state, zip)
         // char            w_state[21];
         // char            w_zip[10];
 
-	int state_id = w_id % states->num_jusos;
+	int state_id = w_id % num_states;
 
-	int idx = RandomNumber(0, states[state_id].num_jusos - 1);
-	struct juso* entry = &states[state_id].jusos[idx];
+	if(d_id < 0){
+		d_id = RandomNumber(0, states[state_id].num_cities - 1);
+	}
+	int city_id = d_id % states[state_id].num_cities;
+
+
+	int idx = RandomNumber(0, states[state_id].cities[city_id].num_jusos - 1);
+	struct juso* entry = &states[state_id].cities[city_id].jusos[idx];
 
 	snprintf(str1, 21, "%s", entry->street1);
 	snprintf(str2, 21, "%s", entry->street2);
