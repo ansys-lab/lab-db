@@ -16,14 +16,20 @@
 #include <time.h>
 #include <sys/time.h>
 #include <fcntl.h>
+#include <stdbool.h>
 
 #include <sqlite3.h>
 
 #include "spt_proc.h"
 #include "tpc.h"
+#include "juso.h"
 
 #define NNULL ((void *)0)
 //#undef NULL
+
+
+struct state* states;
+size_t num_states;
 
 sqlite3* sqlite;
 sqlite3_stmt* stmt[11];
@@ -149,6 +155,13 @@ main(argc, argv)
 
     /* Initialize timestamp (for date columns) */
     gettimestamp(timestamp, STRFTIME_FORMAT, TIMESTAMP_LEN);
+
+	/* Load juso.csv */
+	states = load_juso(&num_states);
+	if(!states){
+		printf("failed to load juso.csv");
+		return;
+	}
 
     /* EXEC SQL WHENEVER SQLERROR GOTO Error_SqlCall; */
 
@@ -377,7 +390,7 @@ LoadWare()
         char            w_street_1[21];
         char            w_street_2[21];
         char            w_city[21];
-        char            w_state[3];
+        char            w_state[21];
         char            w_zip[10];
 	float           w_tax;
 	float           w_ytd;
@@ -402,7 +415,7 @@ LoadWare()
 
                 w_name[ MakeAlphaString(6, 10, w_name) ] = 0;
 
-		MakeAddress(w_street_1, w_street_2, w_city, w_state, w_zip);
+		MakeAddress(w_id, w_street_1, w_street_2, w_city, w_state, w_zip);
 
 		w_tax = ((float) RandomNumber(10L, 20L)) / 100.0;
 		w_ytd = 300000.00;
@@ -432,8 +445,8 @@ LoadWare()
 		if (sqlite3_step(sqlite_stmt) != SQLITE_DONE) goto sqlerr;
 		
 		/** Make Rows associated with Warehouse **/
-		if( Stock(w_id) ) goto retry;
-		if( District(w_id) ) goto retry;
+		if( Stock(w_id) ){ printf("ERROR1\n"); goto retry;}
+		if( District(w_id) ){ printf("ERROR2\n"); goto retry;}
 
 		sqlite3_reset(sqlite_stmt);
 
@@ -537,7 +550,7 @@ Stock(w_id)
 	int             orig[MAXITEMS+1];
 	int             pos;
 	int             i;
-	int             error;
+	int             error = 0;
 	sqlite3_stmt* sqlite_stmt;
 
 	/* EXEC SQL WHENEVER SQLERROR GOTO sqlerr;*/
@@ -650,13 +663,13 @@ District(w_id)
 	char            d_street_1[21];
 	char            d_street_2[21];
 	char            d_city[21];
-	char            d_state[3];
+	char            d_state[21];
 	char            d_zip[10];
 
 	float           d_tax;
 	float           d_ytd;
 	int             d_next_o_id;
-	int             error;
+	int             error = 0;
 	sqlite3_stmt* sqlite_stmt;
 
 	/* EXEC SQL WHENEVER SQLERROR GOTO sqlerr;*/
@@ -671,7 +684,7 @@ retry:
 		/* Generate District Data */
 
 		d_name[ MakeAlphaString(6L, 10L, d_name) ] = 0;
-		MakeAddress(d_street_1, d_street_2, d_city, d_state, d_zip);
+		MakeAddress(w_id, d_street_1, d_street_2, d_city, d_state, d_zip);
 
 		d_tax = ((float) RandomNumber(10L, 20L)) / 100.0;
 
@@ -734,7 +747,7 @@ Customer(d_id, w_id)
 	char            c_street_1[21];
 	char            c_street_2[21];
 	char            c_city[21];
-	char            c_state[3];
+	char            c_state[21];
 	char            c_zip[10];
 	char            c_phone[17];
 	char            c_since[12];
@@ -779,7 +792,7 @@ retry:
 			Lastname(NURand(255, 0, 999), c_last);
 		}
 
-		MakeAddress(c_street_1, c_street_2, c_city, c_state, c_zip);
+		MakeAddress(w_id, c_street_1, c_street_2, c_city, c_state, c_zip);
 		c_phone[ MakeNumberString(16, 16, c_phone) ] = 0;
 
 		if (RandomNumber(0L, 1L))
@@ -1079,18 +1092,31 @@ sqlerr:
  * +==================================================================
  */
 void 
-MakeAddress(str1, str2, city, state, zip)
+MakeAddress(w_id, str1, str2, city, state, zip)
+	int w_id;
 	char           *str1;
 	char           *str2;
 	char           *city;
 	char           *state;
 	char           *zip;
 {
-	str1[ MakeAlphaString(10, 20, str1) ] = 0;	/* Street 1 */
-	str2[ MakeAlphaString(10, 20, str2) ] = 0;	/* Street 2 */
-	city[ MakeAlphaString(10, 20, city) ] = 0;	/* City */
-	state[ MakeAlphaString(2, 2, state) ] = 0;	/* State */
-	zip[ MakeNumberString(9, 9, zip) ] = 0;	/* Zip */
+
+        // char            w_street_1[21];
+        // char            w_street_2[21];
+        // char            w_city[21];
+        // char            w_state[21];
+        // char            w_zip[10];
+
+	int state_id = w_id % states->num_jusos;
+
+	int idx = RandomNumber(0, states[state_id].num_jusos - 1);
+	struct juso* entry = &states[state_id].jusos[idx];
+
+	snprintf(str1, 21, "%s", entry->street1);
+	snprintf(str2, 21, "%s", entry->street2);
+	snprintf(city, 21, "%s", entry->city);
+	snprintf(state, 21, "%s", entry->state);
+	snprintf(zip, 10, "%s", entry->zip);
 }
 
 /*
